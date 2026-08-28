@@ -19,6 +19,7 @@ export const chats = pgTable("chats", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const documents = pgTable("documents", {
@@ -65,6 +66,7 @@ export const messages = pgTable("messages", {
     .references(() => chats.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   parts: jsonb("parts").notNull(),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

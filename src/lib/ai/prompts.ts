@@ -19,8 +19,9 @@ export function buildSystemPrompt(chunks: RetrievedChunk[]) {
 
 Rules:
 - If the answer is not supported by the context, say you cannot find it in the document.
-- When you make factual claims grounded in the document, call the showEvidence tool with the supporting sources.
-- Include filename, page or section, and a short excerpt for each source.
+- When you answer using the document, you MUST call the showEvidence tool with the supporting sources.
+- Reference sources inline in your answer using [Source N] markers that match the context labels.
+- Include filename, page or section, and a short excerpt for each source in showEvidence.
 - Keep answers concise and conversational.
 - Do not invent citations.
 

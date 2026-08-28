@@ -1,23 +1,16 @@
-import { generateId } from "ai";
+import { createMessageId } from "@/lib/id";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import {
-  ALLOWED_EXTENSIONS,
-  ALLOWED_MIME_TYPES,
-  MAX_FILE_SIZE_BYTES,
-} from "@/lib/constants";
+import { validateUploadFile } from "@/lib/documents/validate";
 import { ingestDocument } from "@/lib/documents/ingest";
 import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
+import { titleFromFilename } from "@/lib/chat/title";
 import {
   getChatById,
   saveUploadNoticeMessage,
+  updateChatTitleIfDefault,
 } from "@/lib/db/queries";
-
-function extensionOf(filename: string) {
-  const dot = filename.lastIndexOf(".");
-  return dot === -1 ? "" : filename.slice(dot).toLowerCase();
-}
 
 export async function POST(request: Request) {
   try {
@@ -38,22 +31,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: "File exceeds the 10 MB limit." },
-        { status: 400 },
-      );
-    }
-
-    const extension = extensionOf(file.name);
-    if (
-      !ALLOWED_MIME_TYPES.has(file.type) &&
-      !ALLOWED_EXTENSIONS.has(extension)
-    ) {
-      return NextResponse.json(
-        { error: "Only PDF, TXT, and Markdown files are supported." },
-        { status: 400 },
-      );
+    const validation = validateUploadFile(file);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const [document] = await db
@@ -88,8 +68,10 @@ export async function POST(request: Request) {
     await saveUploadNoticeMessage(
       chatId,
       `Uploaded **${file.name}** (${pageLabel}). You can now ask questions about this document.`,
-      generateId(),
+      createMessageId(),
     );
+
+    await updateChatTitleIfDefault(chatId, titleFromFilename(file.name));
 
     return NextResponse.json({ document: updatedDocument });
   } catch (error) {

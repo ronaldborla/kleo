@@ -1,20 +1,20 @@
+import type { KleoUIMessage } from "@/lib/chat/message-metadata";
+import { createChatStreamResponse } from "@/lib/ai/chat-stream";
+import { titleFromUserMessage } from "@/lib/chat/title";
 import {
-  convertToModelMessages,
-  generateId,
-  stepCountIs,
-  streamText,
-  type UIMessage,
-} from "ai";
-import { CHAT_MODEL } from "@/lib/constants";
-import { gateway } from "@/lib/ai/gateway";
-import { buildSystemPrompt } from "@/lib/ai/prompts";
-import { chatTools } from "@/lib/ai/tools";
-import { getChatById, saveMessage } from "@/lib/db/queries";
+  getChatById,
+  saveMessage,
+  updateChatTitleIfDefault,
+} from "@/lib/db/queries";
+import {
+  getChatErrorMessage,
+  getChatErrorStatus,
+} from "@/lib/chat-errors";
 import { searchRelevantChunks } from "@/lib/rag/search";
 
 export const maxDuration = 60;
 
-function getLastUserQuery(messages: UIMessage[]) {
+function getLastUserQuery(messages: KleoUIMessage[]) {
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMessage) return "";
 
@@ -28,7 +28,7 @@ function getLastUserQuery(messages: UIMessage[]) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const messages = body.messages as UIMessage[] | undefined;
+    const messages = body.messages as KleoUIMessage[] | undefined;
     const chatId = body.chatId as string | undefined;
 
     if (!messages?.length) {
@@ -50,22 +50,17 @@ export async function POST(request: Request) {
     }
 
     const query = getLastUserQuery(messages);
+    if (query) {
+      await updateChatTitleIfDefault(chatId, titleFromUserMessage(query));
+    }
     const retrievedChunks = query
       ? await searchRelevantChunks(chatId, query)
       : [];
 
-    const result = streamText({
-      model: gateway.languageModel(CHAT_MODEL),
-      system: buildSystemPrompt(retrievedChunks),
-      messages: await convertToModelMessages(messages),
-      tools: chatTools,
-      stopWhen: stepCountIs(2),
-    });
-
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-      generateMessageId: generateId,
-      onFinish: async ({ responseMessage }) => {
+    return createChatStreamResponse({
+      messages,
+      retrievedChunks,
+      onFinish: async (responseMessage) => {
         await saveMessage(chatId, responseMessage);
       },
     });
@@ -73,9 +68,9 @@ export async function POST(request: Request) {
     console.error("Chat failed:", error);
     return Response.json(
       {
-        error: error instanceof Error ? error.message : "Chat request failed.",
+        error: getChatErrorMessage(error),
       },
-      { status: 500 },
+      { status: getChatErrorStatus(error) },
     );
   }
 }

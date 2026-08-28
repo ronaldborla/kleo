@@ -28,6 +28,7 @@ export default async function ChatPage({
   return (
     <ChatView
       chatId={id}
+      chatTitle={chat.title}
       initialMessages={messages}
       initialDocuments={documents}
     />

@@ -9,8 +9,9 @@ export function EmptyState() {
       <div className="max-w-md space-y-2">
         <h2 className="text-lg font-semibold">Upload a document to get started</h2>
         <p className="text-sm text-muted-foreground">
-          Attach a PDF, TXT, or Markdown file, then ask questions. Kleo will
-          answer with citations and expandable evidence cards.
+          Attach or drag and drop a PDF, TXT, or Markdown file, then ask
+          questions. Kleo will answer with citations and expandable evidence
+          cards.
         </p>
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">

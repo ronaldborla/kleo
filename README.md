@@ -1,6 +1,6 @@
 # Kleo — Document Chat
 
-Kleo is a small document-chat application built for a take-home assignment. Upload a PDF, TXT, or Markdown file inside the conversation, ask questions, and get streamed answers grounded in the document with expandable evidence cards.
+Kleo is a document-chat application. Upload a PDF, TXT, or Markdown file inside the conversation, ask questions, and get streamed answers grounded in the document with expandable evidence cards.
 
 ## Live demo
 
@@ -16,6 +16,10 @@ Kleo is a small document-chat application built for a take-home assignment. Uplo
 - Expandable evidence cards rendered from the `showEvidence` tool
 - Loading, empty, and error states
 - Conversation survives page reload via `/chat/[id]`
+- Home hub with upload area and 10 most recent chats
+- Collapsible chat history drawer on chat pages (desktop sidebar + mobile sheet)
+- Auto-generated chat titles from uploaded filenames or first user message
+- Soft-delete chats with confirmation modal
 
 ## Tech stack
 
@@ -88,10 +92,26 @@ Reload -> hydrate chat/messages/documents from Neon
 
 | Table | Purpose |
 |---|---|
-| `chats` | One conversation per URL |
+| `chats` | Conversation metadata and titles |
 | `documents` | Uploaded file metadata and processing status |
 | `chunks` | Extracted text segments + `vector(1536)` embeddings |
 | `messages` | Persisted chat history as AI SDK `UIMessage` parts |
+
+### Models
+
+Kleo uses [Vercel AI Gateway](https://vercel.com/ai-gateway) with a primary model and a chain of free-tier fallbacks:
+
+| Role | Model |
+|------|-------|
+| Primary (default) | `openai/gpt-4o-mini` |
+| Fallback 1 | `inclusionai/ling-3.0-flash-fin-free` |
+| Fallback 2 | `minimax/minimax-m3-free` |
+| Fallback 3 | `minimax/minimax-m2.7-free` |
+| Fallback 4 | `poolside/laguna-s-2.1-free` |
+
+Every request starts with the primary model. If it hits a rate limit or other transient error (timeouts, upstream 5xx, model unavailable), Kleo automatically rotates to the next free model in the chain. Browse [free-tier Gateway models](https://vercel.com/ai-gateway/models?freeTier=true) for the current catalog.
+
+Embeddings use `openai/text-embedding-3-small` separately from the chat fallback chain.
 
 ## Deployment
 
@@ -116,7 +136,6 @@ vercel --prod
 
 ## Trade-offs
 
-- **Single chat per URL** instead of a multi-chat sidebar to keep v1 focused
 - **No raw file storage** — only extracted chunks and metadata are persisted
 - **Fixed-size chunking** instead of semantic chunking or reranking
 - **No authentication** — chats are accessible to anyone with the URL

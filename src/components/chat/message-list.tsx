@@ -1,20 +1,17 @@
 "use client";
 
-import type { UIMessage } from "ai";
 import { isToolUIPart, getToolName } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { EvidenceCards } from "@/components/evidence-cards";
-import type { ShowEvidenceInput } from "@/lib/ai/tools";
+import { getShowEvidenceData } from "@/lib/ai/evidence";
+import {
+  formatResponseFooter,
+  type KleoUIMessage,
+} from "@/lib/chat/message-metadata";
 import { cn } from "@/lib/utils";
 
-function isShowEvidenceOutput(output: unknown): output is ShowEvidenceInput {
-  if (!output || typeof output !== "object") return false;
-  const value = output as ShowEvidenceInput;
-  return Array.isArray(value.sources) && typeof value.summary === "string";
-}
-
-export function MessageList({ messages }: { messages: UIMessage[] }) {
+export function MessageList({ messages }: { messages: KleoUIMessage[] }) {
   return (
     <div className="flex flex-col gap-4">
       {messages.map((message) => (
@@ -24,8 +21,12 @@ export function MessageList({ messages }: { messages: UIMessage[] }) {
   );
 }
 
-function MessageBubble({ message }: { message: UIMessage }) {
+function MessageBubble({ message }: { message: KleoUIMessage }) {
   const isUser = message.role === "user";
+  const footer =
+    message.role === "assistant"
+      ? formatResponseFooter(message.metadata)
+      : null;
 
   return (
     <div
@@ -50,22 +51,26 @@ function MessageBubble({ message }: { message: UIMessage }) {
             );
           }
 
-          if (
-            isToolUIPart(part) &&
-            getToolName(part) === "showEvidence" &&
-            part.state === "output-available" &&
-            isShowEvidenceOutput(part.output)
-          ) {
-            return (
-              <EvidenceCards
-                key={`${message.id}-tool-${index}`}
-                data={part.output}
-              />
-            );
+          if (isToolUIPart(part) && getToolName(part) === "showEvidence") {
+            const evidence = getShowEvidenceData(part);
+            if (evidence) {
+              return (
+                <EvidenceCards
+                  key={`${message.id}-tool-${index}`}
+                  data={evidence}
+                />
+              );
+            }
           }
 
           return null;
         })}
+
+        {footer ? (
+          <p className="mt-3 border-t border-border/60 pt-2 text-xs text-muted-foreground">
+            {footer}
+          </p>
+        ) : null}
       </div>
     </div>
   );
