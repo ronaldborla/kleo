@@ -25,8 +25,15 @@ async function uploadDocumentToChat(chatId: string, file: File) {
   return data;
 }
 
-async function createChat() {
-  const response = await fetch("/api/chats", { method: "POST" });
+async function createChatWithUpload(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/chats", {
+    method: "POST",
+    body: formData,
+  });
+
   const data = await response.json();
 
   if (!response.ok || !data.id) {
@@ -76,8 +83,7 @@ export function useDocumentUpload() {
     setIsUploading(true);
 
     try {
-      const chatId = await createChat();
-      await uploadDocumentToChat(chatId, file);
+      const chatId = await createChatWithUpload(file);
       return { chatId };
     } catch (error) {
       const message =
