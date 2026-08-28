@@ -154,6 +154,21 @@ export function getChatErrorMessage(error: unknown): string {
   return "Something went wrong while generating a response. Please try again.";
 }
 
+export function getSafeClientErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string {
+  if (isRateLimitError(error)) {
+    return RATE_LIMIT_MESSAGE;
+  }
+
+  if (error instanceof Error && error.message === MODELS_UNAVAILABLE_MESSAGE) {
+    return MODELS_UNAVAILABLE_MESSAGE;
+  }
+
+  return fallback;
+}
+
 export function getChatErrorStatus(error: unknown): number {
   if (isRateLimitError(error)) {
     return 429;
@@ -183,7 +198,7 @@ export function parseChatClientError(error: Error): {
   try {
     const parsed = JSON.parse(error.message) as { error?: string };
     if (typeof parsed.error === "string") {
-      candidate = { message: parsed.error };
+      candidate = new Error(parsed.error);
     }
   } catch {
     // Keep the original error when the body is not JSON.

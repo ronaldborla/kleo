@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeClientErrorMessage } from "@/lib/chat-errors";
 import { titleFromFilename } from "@/lib/chat/title";
 import { uploadFileToChat } from "@/lib/documents/upload-to-chat";
 import { validateUploadFile } from "@/lib/documents/validate";
@@ -51,8 +52,10 @@ export async function POST(request: Request) {
     console.error("Create chat upload failed:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Failed to upload document.",
+        error: getSafeClientErrorMessage(
+          error,
+          "Failed to upload document. Please try again.",
+        ),
       },
       { status: 500 },
     );

@@ -1,6 +1,7 @@
 import { createMessageId } from "@/lib/id";
 import { eq } from "drizzle-orm";
 import { validateUploadFile } from "@/lib/documents/validate";
+import { sanitizeFilename } from "@/lib/documents/sanitize";
 import { ingestDocument } from "@/lib/documents/ingest";
 import { titleFromFilename } from "@/lib/chat/title";
 import {
@@ -22,11 +23,13 @@ export async function uploadFileToChat(chatId: string, file: File) {
     throw new Error(validation.error);
   }
 
+  const filename = sanitizeFilename(file.name);
+
   const [document] = await db
     .insert(documents)
     .values({
       chatId,
-      filename: file.name,
+      filename,
       mimeType: file.type || "application/octet-stream",
       status: "processing",
     })
@@ -36,7 +39,7 @@ export async function uploadFileToChat(chatId: string, file: File) {
 
   await ingestDocument(
     document.id,
-    file.name,
+    filename,
     file.type || "application/octet-stream",
     buffer,
   );
@@ -53,11 +56,11 @@ export async function uploadFileToChat(chatId: string, file: File) {
 
   await saveUploadNoticeMessage(
     chatId,
-    `Uploaded **${file.name}** (${pageLabel}). You can now ask questions about this document.`,
+    `Uploaded **${filename}** (${pageLabel}). You can now ask questions about this document.`,
     createMessageId(),
   );
 
-  await updateChatTitleIfDefault(chatId, titleFromFilename(file.name));
+  await updateChatTitleIfDefault(chatId, titleFromFilename(filename));
 
   return updatedDocument;
 }

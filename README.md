@@ -141,6 +141,38 @@ vercel --prod
 - **No authentication** — chats are accessible to anyone with the URL
 - **Synchronous ingestion** in the upload request for simplicity on small files
 
+### Security
+
+Kleo is intentionally a demo-style app without user accounts. That means:
+
+- **No authentication / IDOR** — anyone with a chat UUID can read, upload to, or delete that chat
+- **Public recent-chat listing** — the home page and sidebar list chats globally
+- **No rate limiting** — public deployments can incur AI and embedding costs without per-user throttles
+- **RAG prompt injection** — uploaded documents can contain instructions that influence model behavior; this is inherent to document chat
+
+Hardening that is in place:
+
+- Security headers (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`)
+- API input validation (UUID chat IDs, bounded message size/history)
+- Server-side chat history used for model input instead of trusting the client payload
+- Sanitized server error responses (no internal error leakage on 500s)
+- Markdown link filtering (`javascript:` / `data:` blocked)
+- Filename sanitization on upload
+
+## Testing
+
+Run unit tests for utility modules:
+
+```bash
+npm run test:run
+```
+
+Watch mode during development:
+
+```bash
+npm test
+```
+
 ## Time spent
 
 | Phase | Time |
@@ -173,6 +205,8 @@ This avoided runtime errors and duplicate assistant messages.
 ```bash
 npm run dev
 npm run build
+npm test
+npm run test:run
 npm run db:generate
 npm run db:migrate
 npm run db:push

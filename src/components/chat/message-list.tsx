@@ -9,6 +9,7 @@ import {
   formatResponseFooter,
   type KleoUIMessage,
 } from "@/lib/chat/message-metadata";
+import { isSafeUrl } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 
 export function MessageList({ messages }: { messages: KleoUIMessage[] }) {
@@ -44,7 +45,25 @@ function MessageBubble({ message }: { message: KleoUIMessage }) {
           if (part.type === "text") {
             return (
               <div key={`${message.id}-text-${index}`} className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  urlTransform={(url) => (isSafeUrl(url) ? url : "")}
+                  components={{
+                    a: ({ href, children, ...props }) =>
+                      href && isSafeUrl(href) ? (
+                        <a
+                          href={href}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      ) : (
+                        <span>{children}</span>
+                      ),
+                  }}
+                >
                   {part.text}
                 </ReactMarkdown>
               </div>
